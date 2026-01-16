@@ -3,13 +3,14 @@ import {
   Typography,
   Card,
   CardContent,
-  CardMedia,
   Button,
   Stack,
   Divider,
+  TextField,
 } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { deleteItem, deleteAllItems } from "../redux/slice";
+import { useState } from "react";
 
 const CartList = () => {
   const dispatch = useDispatch();
@@ -18,9 +19,28 @@ const CartList = () => {
     (state: any) => state.cart.items ?? []
   );
 
-  // ✅ Calculate total price
+  // 🔹 Quantity state (keyed by item id)
+  const [quantities, setQuantities] = useState<Record<number, number>>(
+    () =>
+      cartItems.reduce((acc: any, item: any) => {
+        acc[item.id] = 1;
+        return acc;
+      }, {})
+  );
+
+  // 🔹 Handle quantity change
+  const handleQtyChange = (id: number, value: number) => {
+    if (value < 1) return;
+    setQuantities((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
+  };
+
+  // 🔹 Calculate total price
   const totalPrice = cartItems.reduce(
-    (sum: number, item: any) => sum + item.price,
+    (sum: number, item: any) =>
+      sum + item.price * (quantities[item.id] || 1),
     0
   );
 
@@ -41,41 +61,93 @@ const CartList = () => {
 
       {/* Cart Items */}
       <Stack spacing={2}>
-        {cartItems.map((item: any) => (
-          <Card key={item.id} sx={{ display: "flex", p: 2 }}>
-            {/* Image */}
-            <CardMedia
-              component="img"
-              image={item.images?.[0]}
-              alt={item.title}
+        {cartItems.map((item: any) => {
+          const qty = quantities[item.id] || 1;
+          const itemTotal = item.price * qty;
+
+          return (
+            <Card
+              key={item.id}
               sx={{
-                width: 120,
-                height: 120,
-                objectFit: "contain",
-                backgroundColor: "#f5f5f5",
-                borderRadius: 1,
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                p: 2,
               }}
-            />
-
-            {/* Content */}
-            <CardContent sx={{ flex: 1 }}>
-              <Typography variant="h6">{item.title}</Typography>
-              <Typography color="text.secondary">
-                ₹{item.price}
-              </Typography>
-
-              <Button
-                variant="outlined"
-                color="error"
-                size="small"
-                sx={{ mt: 1 }}
-                onClick={() => dispatch(deleteItem(item.id))}
+            >
+              {/* Image */}
+              <Box
+                sx={{
+                  width: 120,
+                  height: 120,
+                  backgroundColor: "#f5f5f5",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 1,
+                  mb: { xs: 1, sm: 0 },
+                }}
               >
-                Remove
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+                <img
+                  src={item.images?.[0]}
+                  alt={item.title}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                  }}
+                />
+              </Box>
+
+              {/* Content */}
+              <CardContent sx={{ flex: 1 }}>
+                <Typography variant="h6">{item.title}</Typography>
+
+                <Typography color="text.secondary">
+                  Price: ₹{item.price}
+                </Typography>
+
+                {/* Quantity Input */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    mt: 1,
+                  }}
+                >
+                  <TextField
+                    label="Qty"
+                    type="number"
+                    size="small"
+                    value={qty}
+                    inputProps={{ min: 1 }}
+                    onChange={(e) =>
+                      handleQtyChange(
+                        item.id,
+                        Number(e.target.value)
+                      )
+                    }
+                    sx={{ width: 80 }}
+                  />
+
+                  <Typography fontWeight={600}>
+                    Item Total: ₹{itemTotal}
+                  </Typography>
+                </Box>
+
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  sx={{ mt: 1 }}
+                  onClick={() => dispatch(deleteItem(item.id))}
+                >
+                  Remove
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
       </Stack>
 
       {/* Total */}
@@ -86,6 +158,8 @@ const CartList = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: "wrap",
+          gap: 2,
         }}
       >
         <Typography variant="h5">
@@ -105,4 +179,3 @@ const CartList = () => {
 };
 
 export default CartList;
-
